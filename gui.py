@@ -1,17 +1,16 @@
 import sys
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QLineEdit, QPushButton, 
-                             QTextEdit, QGroupBox, QMessageBox)
+                             QTextEdit, QGroupBox, QMessageBox, QFileDialog)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from main import calculateGrades
+from main import calculateGrades, exportToCsv
 
-# used AI with the gui
 class GradingSystemGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Student Grading System")
-        self.setGeometry(100, 100, 600, 500)
+        self.setGeometry(100, 100, 500, 350)
         
         # Create central widget and main layout
         centralWidget = QWidget()
@@ -30,78 +29,139 @@ class GradingSystemGUI(QMainWindow):
         # Input section
         inputLayout = QVBoxLayout()
         
-        # Number of students input
-        studentCountLayout = QHBoxLayout()
-        studentCountLabel = QLabel("Number of Students:")
-        studentCountLabel.setFont(QFont("Arial", 10))
-        self.studentCountEntry = QLineEdit()
-        self.studentCountEntry.setMaximumWidth(200)
-        studentCountLayout.addWidget(studentCountLabel)
-        studentCountLayout.addWidget(self.studentCountEntry)
-        studentCountLayout.addStretch()
-        inputLayout.addLayout(studentCountLayout)
+        # Student name input
+        studentNameLayout = QHBoxLayout()
+        studentNameLabel = QLabel("Student Name:")
+        studentNameLabel.setFont(QFont("Arial", 10))
+        self.studentNameEntry = QLineEdit()
+        studentNameLayout.addWidget(studentNameLabel)
+        studentNameLayout.addWidget(self.studentNameEntry)
+        inputLayout.addLayout(studentNameLayout)
         
-        # Scores input
-        scoresLayout = QHBoxLayout()
-        scoresLabel = QLabel("Enter Scores (space-separated):")
-        scoresLabel.setFont(QFont("Arial", 10))
-        self.scoresEntry = QLineEdit()
-        scoresLayout.addWidget(scoresLabel)
-        scoresLayout.addWidget(self.scoresEntry)
-        inputLayout.addLayout(scoresLayout)
+        # Number of attempts input
+        attemptsLayout = QHBoxLayout()
+        attemptsLabel = QLabel("Number of Attempts:")
+        attemptsLabel.setFont(QFont("Arial", 10))
+        self.attemptsEntry = QLineEdit()
+        self.attemptsEntry.setMaximumWidth(200)
+        self.attemptsEntry.textChanged.connect(self.onAttemptsChanged)
+        attemptsLayout.addWidget(attemptsLabel)
+        attemptsLayout.addWidget(self.attemptsEntry)
+        
+        # Warning label for exceeding limit
+        self.warningLabel = QLabel("")
+        self.warningLabel.setFont(QFont("Arial", 9))
+        self.warningLabel.setStyleSheet("color: red; font-weight: bold;")
+        attemptsLayout.addWidget(self.warningLabel)
+        
+        attemptsLayout.addStretch()
+        inputLayout.addLayout(attemptsLayout)
+        
+        # Number of students input (removed - now automatic)
+        
+        # Dynamic score input fields container
+        self.scoreInputsLayout = QVBoxLayout()
+        inputLayout.addLayout(self.scoreInputsLayout)
+        
+        # Store score entry widgets
+        self.scoreEntries = []
         
         mainLayout.addLayout(inputLayout)
-        mainLayout.addSpacing(10)
+        mainLayout.addSpacing(20)
         
         # Buttons layout
         buttonLayout = QHBoxLayout()
         
-        # Calculate button
-        self.calculateBtn = QPushButton("Calculate Grades")
+        # Calculate and Export button
+        self.calculateBtn = QPushButton("Calculate & Export to CSV")
         self.calculateBtn.clicked.connect(self.calculateGrades)
-        self.calculateBtn.setMinimumHeight(35)
+        self.calculateBtn.setMinimumHeight(40)
         buttonLayout.addWidget(self.calculateBtn)
         
-        # Clear button
-        self.clearBtn = QPushButton("Clear")
-        self.clearBtn.clicked.connect(self.clearFields)
-        self.clearBtn.setMinimumHeight(35)
-        buttonLayout.addWidget(self.clearBtn)
-        
         mainLayout.addLayout(buttonLayout)
-        mainLayout.addSpacing(10)
+        mainLayout.addStretch()
+    
+    def onAttemptsChanged(self):
+        """Create score input boxes based on number of attempts."""
+        # Clear existing score input fields
+        while self.scoreInputsLayout.count():
+            item = self.scoreInputsLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         
-        # Results section
-        resultsGroup = QGroupBox("Results")
-        resultsLayout = QVBoxLayout()
+        self.scoreEntries = []
         
-        self.resultsText = QTextEdit()
-        self.resultsText.setReadOnly(True)
-        self.resultsText.setFont(QFont("Courier", 10))
-        resultsLayout.addWidget(self.resultsText)
-        
-        resultsGroup.setLayout(resultsLayout)
-        mainLayout.addWidget(resultsGroup)
+        try:
+            attempts = int(self.attemptsEntry.text())
+            
+            # Check if attempts exceeds 4
+            if attempts > 4:
+                self.warningLabel.setText("⚠ Maximum 4 attempts allowed!")
+                # Cap at 4
+                attempts = 4
+            else:
+                self.warningLabel.setText("")
+            
+            if attempts > 0:
+                for i in range(1, attempts + 1):
+                    scoreLayout = QHBoxLayout()
+                    scoreLabel = QLabel(f"Score {i}:")
+                    scoreLabel.setFont(QFont("Arial", 10))
+                    scoreLabel.setMinimumWidth(100)
+                    
+                    scoreEntry = QLineEdit()
+                    scoreEntry.setPlaceholderText(f"Enter score {i}")
+                    
+                    scoreLayout.addWidget(scoreLabel)
+                    scoreLayout.addWidget(scoreEntry)
+                    
+                    self.scoreInputsLayout.addLayout(scoreLayout)
+                    self.scoreEntries.append(scoreEntry)
+                
+                # Adjust window height based on number of attempts
+                newHeight = 250 + (attempts * 40)
+                self.setGeometry(100, 100, 500, min(newHeight, 700))
+        except ValueError:
+            # Invalid input, clear fields and warning
+            self.warningLabel.setText("")
+            pass
         
     def calculateGrades(self):
         try:
-            # Get student count
-            count = int(self.studentCountEntry.text())
-            
-            if count <= 0:
-                QMessageBox.critical(self, "Error", "Number of students must be positive!")
+            # Get student name
+            studentName = self.studentNameEntry.text().strip()
+            if not studentName:
+                QMessageBox.critical(self, "Error", "Please enter a student name!")
                 return
             
-            # Get scores
-            scoresInput = self.scoresEntry.text().split()
-            
-            if len(scoresInput) != count:
-                QMessageBox.critical(self, "Error", 
-                    f"Please enter exactly {count} score(s). You entered {len(scoresInput)}.")
+            # Get number of attempts
+            try:
+                attempts = int(self.attemptsEntry.text())
+                if attempts <= 0:
+                    QMessageBox.critical(self, "Error", "Number of attempts must be positive!")
+                    return
+            except ValueError:
+                QMessageBox.critical(self, "Error", "Please enter a valid number for attempts!")
                 return
             
-            # Convert to integers
-            scores = [int(s) for s in scoresInput]
+            # Check if we have the correct number of score entry fields
+            if len(self.scoreEntries) != attempts:
+                QMessageBox.critical(self, "Error", "Please wait for score fields to update!")
+                return
+            
+            # Collect scores from individual input fields
+            scores = []
+            for i, scoreEntry in enumerate(self.scoreEntries, 1):
+                scoreText = scoreEntry.text().strip()
+                if not scoreText:
+                    QMessageBox.critical(self, "Error", f"Please enter score {i}!")
+                    return
+                try:
+                    score = int(scoreText)
+                    scores.append(score)
+                except ValueError:
+                    QMessageBox.critical(self, "Error", f"Score {i} must be a valid number!")
+                    return
             
             # Validate scores
             for score in scores:
@@ -109,28 +169,18 @@ class GradingSystemGUI(QMainWindow):
                     QMessageBox.critical(self, "Error", "Scores cannot be negative!")
                     return
             
-            # Calculate grades using main.py logic
-            best, results, gradeCounts = calculateGrades(scores)
+            # Calculate best score using main.py logic
+            best = calculateGrades(scores)
             
-            # Clear previous results
-            self.resultsText.clear()
-            
-            # Build results text
-            resultText = f"Best Score: {best}\n"
-            resultText += "=" * 50 + "\n\n"
-            
-            # Display grades
-            for studentNum, score, grade in results:
-                resultText += f"Student {studentNum}: Score = {score}, Grade = {grade}\n"
-            
-            # Summary
-            resultText += "\n" + "=" * 50 + "\n"
-            resultText += "Grade Distribution:\n"
-            for grade in ['A', 'B', 'C', 'D', 'F']:
-                if grade in gradeCounts:
-                    resultText += f"  {grade}: {gradeCounts[grade]} student(s)\n"
-            
-            self.resultsText.setPlainText(resultText)
+            # Export to CSV using main.py logic (always uses data.csv)
+            savedFile = exportToCsv(studentName, scores, best)
+            QMessageBox.information(
+                self,
+                "Success",
+                f"Results exported successfully to:\n{savedFile}"
+            )
+            # Clear fields after successful export
+            self.clearFields()
                     
         except ValueError:
             QMessageBox.critical(self, "Error", 
@@ -139,9 +189,12 @@ class GradingSystemGUI(QMainWindow):
             QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
     
     def clearFields(self):
-        self.studentCountEntry.clear()
-        self.scoresEntry.clear()
-        self.resultsText.clear()
+        self.studentNameEntry.clear()
+        self.attemptsEntry.clear()
+        
+        # Clear all score entry fields
+        for scoreEntry in self.scoreEntries:
+            scoreEntry.clear()
 
 
 def main():

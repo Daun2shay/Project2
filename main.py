@@ -1,53 +1,49 @@
-from collections import Counter
-
-def getGrade(score, best):
-    if score >= best - 10:
-        return 'A'
-    elif score >= best - 20:
-        return 'B'
-    elif score >= best - 30:
-        return 'C'
-    elif score >= best - 40:
-        return 'D'
-    else:
-        return 'F'
-
+import csv
+import os
 
 def calculateGrades(scores):
+    """Calculate best score from list of scores."""
     if not scores:
         raise ValueError("Scores list cannot be empty")
     
     best = max(scores)
-    results = []
-    
-    for i, score in enumerate(scores, 1):
-        grade = getGrade(score, best)
-        results.append((i, score, grade))
-    
-    gradeCounts = {}
-    gradeCounts = Counter(grade for student_num, score, grade in results)
-    
-    return best, results, gradeCounts
+    return best
 
+def exportToCsv(studentName, scores, best, filename="data.csv"):
+    """Export student data to CSV file."""
+    # Check if file exists to determine if we need to write header
+    fileExists = os.path.exists(filename)
+    
+    with open(filename, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        
+        # Write header only if file doesn't exist
+        if not fileExists:
+            writer.writerow(['Name', 'Score 1', 'Score 2', 'Score 3', 'Score 4', 'Final'])
+        
+        # Prepare row data
+        rowData = [studentName]
+        
+        # Add scores (pad with empty strings if less than 4 scores)
+        for i in range(4):
+            if i < len(scores):
+                rowData.append(scores[i])
+            else:
+                rowData.append('')
+        
+        # Add the largest score (best score)
+        rowData.append(best)
+        
+        # Write student data
+        writer.writerow(rowData)
+    
+    return filename
 
-def runCli():
-    count = int(input("Total number of students: "))
-    while True:
-        scores = input(f"Enter {count} score(s): ").split()
-        if len(scores) == count:
-            scores = [int(s) for s in scores]
-            break
-    
-    bestScore, studentResults, gradeDistribution = calculateGrades(scores)
-    
-    for studentNum, score, grade in studentResults:
-        print(f"Student {studentNum} score is {score} and grade is {grade}")
 def main():
+    """Launch the GUI application."""
     from gui import main as guiMain
     guiMain()
 
 
-if __name__ == "__main__":
-    main()
 if __name__ == "__main__":
     main()
