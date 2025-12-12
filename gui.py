@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from main import calculateGrades, exportToCsv
-
+# Used AI to help with the GUI
 class GradingSystemGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -57,8 +57,6 @@ class GradingSystemGUI(QMainWindow):
         attemptsLayout.addStretch()
         inputLayout.addLayout(attemptsLayout)
         
-        # Number of students input (removed - now automatic)
-        
         # Dynamic score input fields container
         self.scoreInputsLayout = QVBoxLayout()
         inputLayout.addLayout(self.scoreInputsLayout)
@@ -96,7 +94,7 @@ class GradingSystemGUI(QMainWindow):
             
             # Check if attempts exceeds 4
             if attempts > 4:
-                self.warningLabel.setText("⚠ Maximum 4 attempts allowed!")
+                self.warningLabel.setText("Maximum 4 attempts allowed!")
                 # Cap at 4
                 attempts = 4
             else:
@@ -202,7 +200,3 @@ def main():
     window = GradingSystemGUI()
     window.show()
     sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()
